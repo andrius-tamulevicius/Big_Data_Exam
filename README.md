@@ -1,2 +1,27 @@
 # Big_Data_Exam
-Big Data Examination: Detection of Vessel Collisions
+
+## Development Setup
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it on Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run the pipeline:
+
+```bash
+python -m src.main
+```
