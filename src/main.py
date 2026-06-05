@@ -3,28 +3,31 @@ from __future__ import annotations
 from src.config import (
     AIS_ARCHIVE_PATH,
     AIS_DATA_URL,
-    CENTER_LATITUDE,
-    CENTER_LONGITUDE,
-    END_DATE,
-    EXTRACTED_DATA_DIR,
-    FILTERED_AIS_PATH,
-    RADIUS_NM,
-    START_DATE,
+    CLEAN_ALL_AIS_PATH,
+    CLEAN_AREA_AIS_PATH,
+    TEMP_DATA_DIR,
+    VALID_BROAD_AIS_PATH,
 )
+from src.scripts.filter_area import filter_exact_area
+from src.scripts.process_daily_data import process_zip_daily
 from src.scripts.download_data import download_file
-from src.scripts.extract_data import extract_zip
-from src.scripts.filter_data import filter_invalid_records
+from src.scripts.remove_gps_jumps import remove_gps_jumps
+from src.scripts.start_spark import start_spark
 
 
 def main() -> None:
-    print("AIS collision detection pipeline")
-    print(f"Timeframe: {START_DATE} to {END_DATE}")
     print(f"Dataset: {AIS_DATA_URL}")
 
     download_file(AIS_DATA_URL, AIS_ARCHIVE_PATH)
-    extract_zip(AIS_ARCHIVE_PATH, EXTRACTED_DATA_DIR)
-    filter_invalid_records(EXTRACTED_DATA_DIR, FILTERED_AIS_PATH)
-    print(f"Filtered output: {FILTERED_AIS_PATH}")
+
+    spark = start_spark()
+
+    try:
+        process_zip_daily(spark, AIS_ARCHIVE_PATH, TEMP_DATA_DIR, VALID_BROAD_AIS_PATH)
+        remove_gps_jumps(spark, VALID_BROAD_AIS_PATH, CLEAN_ALL_AIS_PATH)
+        filter_exact_area(spark, CLEAN_ALL_AIS_PATH, CLEAN_AREA_AIS_PATH)
+    finally:
+        spark.stop()
 
 
 if __name__ == "__main__":

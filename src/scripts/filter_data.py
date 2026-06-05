@@ -3,6 +3,13 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
+from src.config import (
+    BROAD_RADIUS_NM,
+    CENTER_LATITUDE,
+    CENTER_LONGITUDE,
+)
+from src.scripts.calculate_distance import bounding_box, haversine_nm
+
 
 INVALID_MMSI_VALUES = ["123456789"]
 
@@ -40,16 +47,19 @@ VALID_MIDS = [
 ]
 
 
-def filter_invalid_records(input_dir: Path, output_path: Path) -> None:
-    spark = SparkSession.builder.appName("ais-record-filtering").getOrCreate()
-
-    csv_path = str(input_dir / "*.csv")
-    data = spark.read.option("header", True).csv(csv_path)
+def read_filter_daily_csv(spark: SparkSession, csv_path: Path):
+    data = spark.read.option("header", True).csv(str(csv_path))
     timestamp_text = F.trim(F.col("# Timestamp"))
     parsed_timestamp = F.coalesce(
         F.to_timestamp(timestamp_text, "dd/MM/yyyy HH:mm:ss"),
         F.to_timestamp(timestamp_text, "yyyy-MM-dd HH:mm:ss"),
         F.to_timestamp(timestamp_text, "yyyy-MM-dd'T'HH:mm:ss"),
+    )
+
+    min_latitude, max_latitude, min_longitude, max_longitude = bounding_box(
+        CENTER_LATITUDE,
+        CENTER_LONGITUDE,
+        BROAD_RADIUS_NM,
     )
 
     filtered = (
@@ -58,6 +68,15 @@ def filter_invalid_records(input_dir: Path, output_path: Path) -> None:
         .withColumn("timestamp", parsed_timestamp)
         .withColumn("latitude", F.col("Latitude").cast("double"))
         .withColumn("longitude", F.col("Longitude").cast("double"))
+        .withColumn("navigational_status", F.trim(F.col("Navigational status")))
+        .withColumn("sog", F.col("SOG").cast("double"))
+        .withColumn("cog", F.col("COG").cast("double"))
+        .withColumn("heading", F.col("Heading").cast("double"))
+        .withColumn("name", F.trim(F.col("Name")))
+        .withColumn("ship_type", F.trim(F.col("Ship type")))
+        .withColumn("width", F.col("Width").cast("double"))
+        .withColumn("length", F.col("Length").cast("double"))
+        .withColumn("draught", F.col("Draught").cast("double"))
         .filter(F.col("mmsi").rlike("^[0-9]{9}$"))
         .filter(~F.col("mmsi").isin(INVALID_MMSI_VALUES))
         .filter(~F.col("mmsi").rlike(r"^([0-9])\1{8}$"))
@@ -65,9 +84,33 @@ def filter_invalid_records(input_dir: Path, output_path: Path) -> None:
         .filter(F.col("timestamp").isNotNull())
         .filter(F.col("latitude").between(-90, 90))
         .filter(F.col("longitude").between(-180, 180))
+        .filter(F.col("latitude").between(min_latitude, max_latitude))
+        .filter(F.col("longitude").between(min_longitude, max_longitude))
+        .withColumn(
+            "distance_from_center_nm",
+            haversine_nm(
+                F.col("latitude"),
+                F.col("longitude"),
+                F.lit(CENTER_LATITUDE),
+                F.lit(CENTER_LONGITUDE),
+            ),
+        )
+        .filter(F.col("distance_from_center_nm") <= BROAD_RADIUS_NM)
+        .select(
+            "mmsi",
+            "timestamp",
+            "latitude",
+            "longitude",
+            "navigational_status",
+            "sog",
+            "cog",
+            "heading",
+            "name",
+            "ship_type",
+            "width",
+            "length",
+            "draught",
+        )
     )
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    filtered.write.mode("overwrite").parquet(str(output_path))
-
-    spark.stop()
+    return filtered

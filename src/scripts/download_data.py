@@ -12,6 +12,9 @@ def download_file(url: str, destination: Path, overwrite: bool = False) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
 
     if destination.exists() and not overwrite:
+        temporary_path = destination.with_suffix(destination.suffix + ".part")
+        if temporary_path.exists():
+            temporary_path.unlink()
         print(f"Dataset already exists")
         return destination
 
