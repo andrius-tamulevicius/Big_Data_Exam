@@ -62,7 +62,7 @@ From the root folder of the repository, run the published image:
 docker run --rm -v "${PWD}\data:/app/data" andriustamulevicius/big-data-exam:latest
 ```
 
-You can also run it with Docker Compose:
+You can also run it with Docker Compose, if you are in the original project root:
 
 ```bash
 docker compose up
