@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNNING_IN_DOCKER = Path("/.dockerenv").exists()
 
 # Area settings
 CENTER_LATITUDE = 55.225000
@@ -11,16 +12,19 @@ BROAD_RADIUS_NM = 75.0
 
 # Input and output paths
 AIS_DATA_URL = "http://aisdata.ais.dk/2021/aisdk-2021-12.zip"
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
+MOUNTED_DATA_DIR = PROJECT_ROOT / "data"
+WORK_DATA_DIR = Path("/tmp/ais") if RUNNING_IN_DOCKER else MOUNTED_DATA_DIR
+RAW_DATA_DIR = MOUNTED_DATA_DIR / "raw"
 AIS_ARCHIVE_PATH = RAW_DATA_DIR / "aisdk-2021-12.zip"
-TEMP_DATA_DIR = PROJECT_ROOT / "data" / "temp"
-FILTERED_DATA_DIR = PROJECT_ROOT / "data" / "filtered"
-RESULTS_DIR = PROJECT_ROOT / "data" / "results"
+TEMP_DATA_DIR = WORK_DATA_DIR / "temp"
+FILTERED_DATA_DIR = WORK_DATA_DIR / "filtered"
+INTERNAL_RESULTS_DIR = WORK_DATA_DIR / "results"
+RESULTS_DIR = MOUNTED_DATA_DIR / "results"
 VALID_BROAD_AIS_PATH = FILTERED_DATA_DIR / "aisdk_2021_12_valid_broad"
 CLEAN_ALL_AIS_PATH = FILTERED_DATA_DIR / "aisdk_2021_12_clean_all"
 CLEAN_AREA_AIS_PATH = FILTERED_DATA_DIR / "aisdk_2021_12_clean_area"
-COLLISION_CANDIDATES_PATH = RESULTS_DIR / "collision_candidates"
-VALIDATED_CANDIDATES_PATH = RESULTS_DIR / "validated_collision_candidates"
+COLLISION_CANDIDATES_PATH = INTERNAL_RESULTS_DIR / "collision_candidates"
+VALIDATED_CANDIDATES_PATH = INTERNAL_RESULTS_DIR / "validated_collision_candidates"
 FINAL_RESULT_PATH = RESULTS_DIR / "collision_result.json"
 TRAJECTORY_MAP_PATH = RESULTS_DIR / "collision_trajectory_map.html"
 

@@ -1,0 +1,9 @@
+services:
+  collision-detection:
+    build: .
+    image: andriustamulevicius/big-data-exam:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYSPARK_PYTHON=python
+    volumes:
+      - ./data:/app/data
