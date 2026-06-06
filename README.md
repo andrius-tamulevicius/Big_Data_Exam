@@ -20,6 +20,22 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+The application also requires Spark. To configure follow the following steps:
+
+On Windows, configure Hadoop native files globally:
+
+```text
+C:/Winutils/bin/winutils.exe
+C:/Winutils/bin/hadoop.dll
+```
+
+Set:
+
+```text
+HADOOP_HOME=C:/Winutils
+Path includes C:/Winutils/bin
+```
+
 Run the pipeline:
 
 ```bash
