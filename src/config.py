@@ -3,11 +3,13 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+# Area settings
 CENTER_LATITUDE = 55.225000
 CENTER_LONGITUDE = 14.245000
 RADIUS_NM = 50.0
 BROAD_RADIUS_NM = 75.0
 
+# Input and output paths
 AIS_DATA_URL = "http://aisdata.ais.dk/2021/aisdk-2021-12.zip"
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 AIS_ARCHIVE_PATH = RAW_DATA_DIR / "aisdk-2021-12.zip"
@@ -22,17 +24,24 @@ VALIDATED_CANDIDATES_PATH = RESULTS_DIR / "validated_collision_candidates"
 FINAL_RESULT_PATH = RESULTS_DIR / "collision_result.json"
 TRAJECTORY_MAP_PATH = RESULTS_DIR / "collision_trajectory_map.html"
 
+# Cleaning thresholds
 GPS_SPEED_LIMIT_KNOTS = 60.0
 GPS_EDGE_SPEED_LIMIT_KNOTS = 200.0
+
+# Candidate search settings
 CANDIDATE_DISTANCE_NM = 0.05
 TIME_BUCKET_SECONDS = 60
 GRID_SIZE_DEGREES = 0.01
 VALIDATION_WINDOW_MINUTES = 10
+
+# Movement filters
 MOVING_SPEED_KNOTS = 1.0
 STATIONARY_SPEED_KNOTS = 0.5
 MOVING_DISTANCE_METERS = 100.0
 STATIONARY_DISTANCE_METERS = 50.0
 MIN_BEFORE_POINTS = 3
+
+# Final collision filters
 COLLISION_DISTANCE_METERS = 5.0
 COLLISION_MIN_SPEED_DROP = 0.2
 COLLISION_MIN_BEFORE_POINTS = 20

@@ -13,8 +13,10 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
     if not prepare_stage(output_path):
         return
 
+    # Reads the cleaned data
     data = spark.read.parquet(str(input_path))
 
+    # Find records at the same time with conflicting positions
     bad_duplicate_times = (
         data
         .groupBy("mmsi", "timestamp")
@@ -24,6 +26,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
     )
 
     data = (
+        # Removes duplicates
         data
         .join(bad_duplicate_times, ["mmsi", "timestamp"], "left_anti")
         .dropDuplicates(["mmsi", "timestamp", "latitude", "longitude"])
@@ -31,6 +34,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
 
     vessel_window = Window.partitionBy("mmsi").orderBy("timestamp")
 
+    # Collects previous and next AIS points for each vessel
     with_neighbors = (
         data
         .repartition("mmsi")
@@ -44,6 +48,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
 
     cleaned = (
         with_neighbors
+        # Calculates time gaps
         .withColumn(
             "previous_hours",
             (F.unix_timestamp("timestamp") - F.unix_timestamp("previous_timestamp")) / 3600,
@@ -52,6 +57,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
             "next_hours",
             (F.unix_timestamp("next_timestamp") - F.unix_timestamp("timestamp")) / 3600,
         )
+        # Calculates distances to neighboring points
         .withColumn(
             "previous_distance_nm",
             haversine_nm(
@@ -70,6 +76,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
                 F.col("next_longitude"),
             ),
         )
+        # Converts distance and time to speed
         .withColumn(
             "previous_speed_knots",
             F.when(F.col("previous_hours") > 0, F.col("previous_distance_nm") / F.col("previous_hours")),
@@ -78,11 +85,13 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
             "next_speed_knots",
             F.when(F.col("next_hours") > 0, F.col("next_distance_nm") / F.col("next_hours")),
         )
+        # Marks impossible isolated GPS jumps
         .withColumn(
             "is_middle_spike",
             (F.col("previous_speed_knots") > GPS_SPEED_LIMIT_KNOTS)
             & (F.col("next_speed_knots") > GPS_SPEED_LIMIT_KNOTS),
         )
+        # Marks impossible first or last points
         .withColumn(
             "is_edge_spike",
             (
@@ -94,6 +103,7 @@ def remove_gps_jumps(spark: SparkSession, input_path: Path, output_path: Path) -
                 & (F.col("previous_speed_knots") > GPS_EDGE_SPEED_LIMIT_KNOTS)
             ),
         )
+        # Keeps only valid track points
         .filter(~F.col("is_middle_spike"))
         .filter(~F.col("is_edge_spike"))
         .select(

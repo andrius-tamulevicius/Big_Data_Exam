@@ -12,6 +12,7 @@ def filter_exact_area(spark: SparkSession, input_path: Path, output_path: Path) 
     if not prepare_stage(output_path):
         return
 
+    # Creates a box for the final area
     min_latitude, max_latitude, min_longitude, max_longitude = bounding_box(
         CENTER_LATITUDE,
         CENTER_LONGITUDE,
@@ -20,6 +21,7 @@ def filter_exact_area(spark: SparkSession, input_path: Path, output_path: Path) 
 
     filtered = (
         spark.read.parquet(str(input_path))
+        # Creates the bounding box around the starting point
         .filter(F.col("latitude").between(min_latitude, max_latitude))
         .filter(F.col("longitude").between(min_longitude, max_longitude))
         .withColumn(

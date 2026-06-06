@@ -48,7 +48,10 @@ VALID_MIDS = [
 
 
 def read_filter_daily_csv(spark: SparkSession, csv_path: Path):
+    # Reads the raw CSV
     data = spark.read.option("header", True).csv(str(csv_path))
+
+    # Parses the timestamp
     timestamp_text = F.trim(F.col("# Timestamp"))
     parsed_timestamp = F.coalesce(
         F.to_timestamp(timestamp_text, "dd/MM/yyyy HH:mm:ss"),
@@ -64,6 +67,7 @@ def read_filter_daily_csv(spark: SparkSession, csv_path: Path):
 
     filtered = (
         data
+        # Renames and collects the columns
         .withColumn("mmsi", F.trim(F.col("MMSI")))
         .withColumn("timestamp", parsed_timestamp)
         .withColumn("latitude", F.col("Latitude").cast("double"))
@@ -77,6 +81,7 @@ def read_filter_daily_csv(spark: SparkSession, csv_path: Path):
         .withColumn("width", F.col("Width").cast("double"))
         .withColumn("length", F.col("Length").cast("double"))
         .withColumn("draught", F.col("Draught").cast("double"))
+        # Removes invalid vessel IDs and bad positions
         .filter(F.col("mmsi").rlike("^[0-9]{9}$"))
         .filter(~F.col("mmsi").isin(INVALID_MMSI_VALUES))
         .filter(~F.col("mmsi").rlike(r"^([0-9])\1{8}$"))
@@ -84,8 +89,11 @@ def read_filter_daily_csv(spark: SparkSession, csv_path: Path):
         .filter(F.col("timestamp").isNotNull())
         .filter(F.col("latitude").between(-90, 90))
         .filter(F.col("longitude").between(-180, 180))
+        # Applies a broad area filter. Applying a broad filter first removes an extremely large portion of the data
+        # and makes it easier for future handling
         .filter(F.col("latitude").between(min_latitude, max_latitude))
         .filter(F.col("longitude").between(min_longitude, max_longitude))
+        # Applies the exact distance from the starting point
         .withColumn(
             "distance_from_center_nm",
             haversine_nm(

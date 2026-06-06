@@ -11,6 +11,7 @@ CHUNK_SIZE = 1024 * 1024 * 8
 def download_file(url: str, destination: Path, overwrite: bool = False) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
 
+    # Skips the download if the data already exists
     if destination.exists() and not overwrite:
         temporary_path = destination.with_suffix(destination.suffix + ".part")
         if temporary_path.exists():

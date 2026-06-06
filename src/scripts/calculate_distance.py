@@ -7,6 +7,7 @@ EARTH_RADIUS_NM = 3440
 
 
 def haversine_nm(lat1, lon1, lat2, lon2):
+    # Calculates distance in nautical miles. This uses Spark
     lat1_rad = F.radians(lat1)
     lat2_rad = F.radians(lat2)
     lat_delta = F.radians(lat2 - lat1)
@@ -16,6 +17,7 @@ def haversine_nm(lat1, lon1, lat2, lon2):
 
 
 def bounding_box(center_latitude: float, center_longitude: float, radius_nm: float):
+    # Creates a square filter around the center point. Used for initial data filtration
     latitude_delta = radius_nm / 60.0
     longitude_delta = radius_nm / (60.0 * math.cos(math.radians(center_latitude)))
     return (
@@ -27,6 +29,7 @@ def bounding_box(center_latitude: float, center_longitude: float, radius_nm: flo
 
 
 def python_haversine_nm(lat1, lon1, lat2, lon2):
+    # Calculates distance in nautical miles. This does not use Spark
     lat1_rad = math.radians(lat1)
     lat2_rad = math.radians(lat2)
     lat_delta = math.radians(lat2 - lat1)

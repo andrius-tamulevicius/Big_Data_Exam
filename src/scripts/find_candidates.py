@@ -13,6 +13,7 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
     if not prepare_stage(output_path):
         return
 
+    # Puts each point into a time bucket and grid cell
     data = (
         spark.read.parquet(str(input_path))
         .withColumn("time_bucket", F.floor(F.unix_timestamp("timestamp") / TIME_BUCKET_SECONDS))
@@ -31,6 +32,7 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
         )
     )
 
+    # Expands the left side to nearby buckets and cells
     left = (
         data
         .withColumn("join_time_bucket", F.explode(F.array(
@@ -51,6 +53,7 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
         .alias("left")
     )
 
+    # Prepares the right side for the bucket join
     right = (
         data
         .withColumnRenamed("time_bucket", "join_time_bucket")
@@ -59,11 +62,15 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
         .alias("right")
     )
 
+    # Joins the data
     joined = (
         left
         .join(right, ["join_time_bucket", "join_lat_cell", "join_lon_cell"])
+        # Keeps each pair once
         .filter(F.col("left.mmsi") < F.col("right.mmsi"))
+        # Keeps points that are close in time.
         .filter(F.abs(F.unix_timestamp(F.col("left.timestamp")) - F.unix_timestamp(F.col("right.timestamp"))) <= TIME_BUCKET_SECONDS)
+        # Calculates exact distance
         .withColumn(
             "distance_nm",
             haversine_nm(
@@ -73,6 +80,7 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
                 F.col("right.longitude"),
             ),
         )
+        # Keeps very close vessel pairs
         .filter(F.col("distance_nm") <= CANDIDATE_DISTANCE_NM)
         .select(
             F.col("left.mmsi").alias("mmsi_1"),
@@ -89,6 +97,7 @@ def find_collision_candidates(spark: SparkSession, input_path: Path, output_path
         .dropDuplicates(["mmsi_1", "mmsi_2", "timestamp_1", "timestamp_2"])
     )
 
+    # Keeps the closest point for each vessel pair
     pair_window = Window.partitionBy("mmsi_1", "mmsi_2").orderBy("distance_nm")
 
     candidates = (

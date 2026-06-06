@@ -13,6 +13,7 @@ def process_zip_daily(spark: SparkSession, zip_path: Path, temp_dir: Path, outpu
 
     temp_dir.mkdir(parents=True, exist_ok=True)
 
+    # Process one CSV from the ZIP at a time
     with ZipFile(zip_path, "r") as zip_file:
         csv_names = sorted(name for name in zip_file.namelist() if name.lower().endswith(".csv"))
 
@@ -21,6 +22,7 @@ def process_zip_daily(spark: SparkSession, zip_path: Path, temp_dir: Path, outpu
             extracted_path = Path(zip_file.extract(csv_name, temp_dir))
 
             try:
+                # Filters the day and appends it to Parquet dataset for later usee
                 filtered = read_filter_daily_csv(spark, extracted_path)
                 filtered.write.mode("append").parquet(str(output_path))
             finally:
